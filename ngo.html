@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NutriFlow – NGO Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* ─── Sidebar nav ──────────────────────────────── */
+    .sidebar-nav { display:flex; flex-direction:column; gap:0; }
+    .nav-item {
+      display:flex; align-items:center; gap:.75rem;
+      padding:.65rem .9rem; border-radius:10px;
+      color:rgba(255,255,255,.72); text-decoration:none;
+      font-size:.9rem; font-weight:500;
+      transition:background .18s,color .18s,transform .15s;
+      margin-bottom:.2rem; cursor:pointer;
+      border:none; background:transparent; width:100%;
+      text-align:left; font-family:'Poppins',sans-serif;
+      position:relative; user-select:none;
+    }
+    .nav-item .nav-icon { font-size:1.05rem; flex-shrink:0; width:22px; text-align:center; transition:transform .2s; }
+    .nav-item:hover { background:rgba(255,255,255,.12); color:#fff; transform:translateX(3px); }
+    .nav-item:hover .nav-icon { transform:scale(1.15); }
+    .nav-item.active { background:rgba(255,255,255,.18); color:#fff; font-weight:600; }
+    .nav-item.active::before {
+      content:''; position:absolute; left:0; top:20%; bottom:20%;
+      width:3px; border-radius:0 3px 3px 0; background:#86efac;
+    }
+    .nav-item.dim { color:rgba(255,255,255,.45); }
+    .nav-item.dim:hover { color:rgba(255,255,255,.75); }
+
+    /* ─── Mobile ────────────────────────────────────── */
+    .mob-sidebar-bar {
+      display:none; position:sticky; top:0; z-index:40;
+      background:#2f5d50; padding:.75rem 1.2rem;
+      align-items:center; justify-content:space-between;
+      box-shadow:0 2px 10px rgba(0,0,0,.18);
+    }
+    .mob-menu-btn { background:rgba(255,255,255,.15); border:none; cursor:pointer; border-radius:8px; padding:.4rem .7rem; color:#fff; font-size:.85rem; font-weight:600; font-family:'Poppins',sans-serif; }
+    .mob-nav-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:49; backdrop-filter:blur(2px); }
+    .mob-nav-overlay.open { display:block; }
+    .mob-nav-drawer { position:fixed; top:0; left:0; bottom:0; width:270px; background:#2f5d50; z-index:50; padding:2rem 1.5rem; transform:translateX(-100%); transition:transform .28s cubic-bezier(.4,0,.2,1); overflow-y:auto; }
+    .mob-nav-drawer.open { transform:translateX(0); }
+    @media(max-width:900px){ .dash-sidebar{display:none!important;} .mob-sidebar-bar{display:flex!important;} }
+    .dash-section-anchor { scroll-margin-top:24px; }
+
+    /* ─── NGO MAP SECTION ───────────────────────────── */
+    .ngo-map-section {
+      background: #fff;
+      border: 1px solid #d4e8e2;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 4px 28px rgba(47,93,80,.1);
+      margin-bottom: 2.5rem;
+    }
+
+    /* Map header */
+    .ngo-map-header {
+      background: linear-gradient(135deg, #2f5d50 0%, #3d6e61 100%);
+      padding: 1.1rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .ngo-map-header-left h3 { font-size:1rem; font-weight:700; color:#fff; margin:0 0 .2rem; }
+    .ngo-map-header-left p  { font-size:.72rem; color:rgba(255,255,255,.68); margin:0; }
+
+    /* Distance filter buttons */
+    .dist-filter-row {
+      display: flex; gap: .5rem; flex-wrap: wrap;
+      padding: .9rem 1.2rem;
+      background: #f3f9f7;
+      border-bottom: 1px solid #e5ede9;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dist-filter-group { display:flex; gap:.4rem; flex-wrap:wrap; }
+    .dist-btn {
+      padding: .45rem 1.1rem; border-radius: 50px;
+      font-size: .78rem; font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      border: 2px solid #d1e3dd; background: #fff;
+      color: var(--text-mid, #3d5a52); cursor: pointer;
+      transition: all .2s;
+    }
+    .dist-btn:hover { border-color: #2f5d50; color: #2f5d50; }
+    .dist-btn.active { background: #2f5d50; color: #fff; border-color: #2f5d50; }
+
+    /* Stats mini-bar */
+    .map-stats-bar {
+      display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center;
+      font-size: .78rem; color: rgba(47,93,80,.8);
+    }
+    .map-stat-pill {
+      display: flex; align-items: center; gap: .3rem;
+      background: rgba(47,93,80,.1); padding: .25rem .7rem;
+      border-radius: 50px; font-weight: 600;
+    }
+
+    /* Map canvas */
+    #ngoMapContainer {
+      width: 100%; height: 480px; display: block;
+    }
+    @media (max-width: 768px) { #ngoMapContainer { height: 340px; } }
+
+    /* Map placeholder */
+    .ngo-map-placeholder {
+      width: 100%; height: 480px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #e8f2ef 0%, #f3f9f7 100%);
+      gap: .9rem; padding: 2rem; text-align: center;
+    }
+    .ngo-map-placeholder h4 { font-size:1rem; font-weight:700; color:#2f5d50; }
+    .ngo-map-placeholder p  { font-size:.82rem; color:#6b8c84; max-width:360px; line-height:1.65; }
+    .ngo-map-placeholder code { background:#2f5d50; color:#86efac; padding:.2rem .6rem; border-radius:6px; font-size:.8rem; }
+
+    /* Map footer / legend */
+    .map-footer-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .8rem;
+      padding: .8rem 1.2rem;
+      background: #f3f9f7;
+      border-top: 1px solid #e5ede9;
+      font-size: .75rem;
+    }
+    .map-legend { display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:.4rem; color:var(--text-mid, #3d5a52); }
+    .legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+    /* Clear route button */
+    #clearRouteBtn {
+      display: none;
+      align-items: center; gap: .4rem;
+      background: #fee2e2; color: #991b1b;
+      border: none; padding: .4rem .9rem; border-radius: 50px;
+      font-size: .75rem; font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer; transition: all .2s;
+    }
+    #clearRouteBtn:hover { background: #fca5a5; }
+
+    /* Marker count badge */
+    #mapMarkerCount {
+      display: inline-flex; align-items: center;
+      background: rgba(47,93,80,.12); color: #2f5d50;
+      font-size: .72rem; font-weight: 700;
+      padding: .25rem .75rem; border-radius: 50px;
+    }
+  </style>
+</head>
+<body id="ngoDash">
+
+<!-- Confirm Popup -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <span class="confirm-icon">🤝</span>
+    <div class="confirm-title">Confirm Pickup</div>
+    <p class="confirm-text">
+      Are you sure you want to accept the pickup for <strong id="popupFoodName"></strong>?<br/>
+      <span style="font-size:.82rem;color:var(--text-light);">You'll be responsible for collecting and distributing this food.</span>
+    </p>
+    <div class="confirm-btns">
+      <button class="confirm-yes" id="confirmYes">✅ Yes, Accept!</button>
+      <button class="confirm-no"  id="confirmNo">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mobile top bar ─────────────────────────────── -->
+<div class="mob-sidebar-bar" id="mobSidebarBar">
+  <a href="index.html" style="display:flex;align-items:center;gap:.6rem;color:#fff;font-weight:700;font-size:.95rem;text-decoration:none;">
+    <span style="font-size:1.3rem;">🌿</span> NutriFlow
+  </a>
+  <button class="mob-menu-btn" id="mobMenuBtn">☰ &nbsp;Menu</button>
+</div>
+<div class="mob-nav-overlay" id="mobOverlay"></div>
+<div class="mob-nav-drawer" id="mobDrawer">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
+    <button id="mobDrawerClose" style="background:rgba(255,255,255,.12);border:none;cursor:pointer;border-radius:50%;width:32px;height:32px;color:rgba(255,255,255,.8);font-size:1.1rem;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+  <a href="index.html" style="display:flex;align-items:center;gap:.7rem;text-decoration:none;margin-bottom:1.5rem;">
+    <div style="background:rgba(255,255,255,.15);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🌿</div>
+    <div><div style="font-weight:700;font-size:.95rem;color:#fff;">NutriFlow</div><div style="font-size:.62rem;color:rgba(255,255,255,.5);">NGO Portal</div></div>
+  </a>
+  <nav class="sidebar-nav" id="mobSidebarNav">
+    <a href="#nearby-map"    class="nav-item active" data-section="nearby-map"><span class="nav-icon">🗺️</span> Food Map</a>
+    <a href="#availableFood" class="nav-item" data-section="availableFood"><span class="nav-icon">🍽️</span> Available Food</a>
+    <a href="#myPickups"     class="nav-item" data-section="myPickups"><span class="nav-icon">📦</span> My Pickups</a>
+    <a href="#ngoNotifications" class="nav-item" data-section="ngoNotifications"><span class="nav-icon">🔔</span> Notifications</a>
+    <a href="#ngoImpact"     class="nav-item" data-section="ngoImpact"><span class="nav-icon">🏆</span> My Impact</a>
+  </nav>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);">
+    <a href="login.html" class="nav-item dim"><span class="nav-icon">⇄</span> Switch Role</a>
+    <a href="index.html" class="nav-item dim"><span class="nav-icon">🏠</span> Back to Home</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     LAYOUT
+══════════════════════════════════════════════════ -->
+<div class="dash-layout flex">
+
+  <!-- ── SIDEBAR ─────────────────────────────────── -->
+  <aside class="dash-sidebar">
+    <a href="index.html" class="sidebar-brand" style="text-decoration:none;">
+      <div class="sidebar-logo-icon">🌿</div>
+      <div>
+        <div class="sidebar-brand-name">NutriFlow</div>
+        <div style="font-size:.68rem;color:rgba(255,255,255,.5);font-weight:400;">NGO Portal</div>
+      </div>
+    </a>
+
+    <div class="rounded-xl p-3 mb-2" style="background:rgba(255,255,255,.1);">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg" style="background:rgba(255,255,255,.15);">🤝</div>
+        <div>
+          <div class="text-sm font-semibold text-white">Hope Foundation</div>
+          <span class="badge-verified" style="font-size:.6rem;padding:.15rem .45rem;">✅ Verified NGO</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section-label">Navigation</div>
+    <nav class="sidebar-nav" id="desktopSidebarNav">
+      <a href="#nearby-map"      class="nav-item active" data-section="nearby-map"><span class="nav-icon">🗺️</span> Food Map</a>
+      <a href="#availableFood"   class="nav-item" data-section="availableFood"><span class="nav-icon">🍽️</span> Available Food</a>
+      <a href="#myPickups"       class="nav-item" data-section="myPickups"><span class="nav-icon">📦</span> My Pickups</a>
+      <a href="#ngoNotifications" class="nav-item" data-section="ngoNotifications"><span class="nav-icon">🔔</span> Notifications</a>
+      <a href="#ngoImpact"       class="nav-item" data-section="ngoImpact"><span class="nav-icon">🏆</span> My Impact</a>
+    </nav>
+
+    <div class="sidebar-section-label">Quick Stats</div>
+    <div class="space-y-2">
+      <div class="rounded-lg p-3 text-center" style="background:rgba(255,255,255,.08);">
+        <div class="text-lg font-bold text-green-300" id="ngoStatMeals">0</div>
+        <div class="text-xs" style="color:rgba(255,255,255,.55);">Meals Distributed</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,.08);">
+          <div class="text-base font-bold text-blue-300" id="ngoStatPickups">0</div>
+          <div class="text-xs" style="color:rgba(255,255,255,.5);">Pickups</div>
+        </div>
+        <div class="rounded-lg p-2 text-center" style="background:rgba(255,255,255,.08);">
+          <div class="text-base font-bold text-yellow-300" id="ngoStatAvailable">0</div>
+          <div class="text-xs" style="color:rgba(255,255,255,.5);">Available</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <a href="login.html" class="nav-item dim"><span class="nav-icon">⇄</span> Switch Role</a>
+      <a href="index.html" class="nav-item dim"><span class="nav-icon">🏠</span> Back to Home</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CONTENT ─────────────────────────────── -->
+  <main class="dash-main">
+
+    <!-- Page header -->
+    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold" style="font-family:'Playfair Display',serif;color:var(--text-dark);">NGO Dashboard</h1>
+        <p class="text-sm mt-1" style="color:var(--text-light);">Find available food and track your pickups</p>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="badge-verified">✅ Verified NGO</span>
+        <div class="text-sm px-3 py-1 rounded-lg" style="background:var(--green-xpale);color:var(--green-dark);font-weight:600;">📍 New Delhi, India</div>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="stat-card"><div class="stat-icon">🥗</div><div class="stat-value" id="ngoStatMeals2">0</div><div class="stat-label">Meals Distributed</div></div>
+      <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" style="color:#059669;" id="ngoStatPickups2">0</div><div class="stat-label">Total Pickups</div></div>
+      <div class="stat-card"><div class="stat-icon">🚚</div><div class="stat-value" style="color:#7c3aed;" id="ngoStatInProgress">0</div><div class="stat-label">In Progress</div></div>
+      <div class="stat-card"><div class="stat-icon">🍽️</div><div class="stat-value" style="color:#d97706;" id="ngoStatAvailable2">0</div><div class="stat-label">Available Now</div></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         SECTION: NEARBY FOOD MAP
+    ══════════════════════════════════════════════ -->
+    <section id="nearby-map" class="dash-section-anchor" style="margin-bottom:2.5rem;">
+      <div class="dash-section-title">🗺️ Nearby Food on Map</div>
+
+      <div class="ngo-map-section">
+
+        <!-- Map header -->
+        <div class="ngo-map-header">
+          <div class="ngo-map-header-left">
+            <h3>Live Food Listings Near You</h3>
+            <p>Click any marker to view details · Accept or get directions directly from the map</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+            <span id="mapMarkerCount" style="font-size:.72rem;">— listings</span>
+            <span style="background:rgba(134,239,172,.2);color:#86efac;font-size:.68rem;font-weight:700;padding:.25rem .75rem;border-radius:50px;border:1px solid rgba(134,239,172,.35);">
+              🔴 Live
+            </span>
+          </div>
+        </div>
+
+        <!-- Distance filter + stats -->
+        <div class="dist-filter-row">
+          <div class="dist-filter-group">
+            <span style="font-size:.75rem;font-weight:600;color:#3d5a52;align-self:center;">Filter by distance:</span>
+            <button class="dist-btn active" data-dist="all"  id="distAll">📍 All</button>
+            <button class="dist-btn"        data-dist="5km"  id="dist5km">Within 5 km <span id="mapCount5" style="background:rgba(47,93,80,.12);padding:1px 6px;border-radius:50px;margin-left:3px;font-size:.7rem;">—</span></button>
+            <button class="dist-btn"        data-dist="10km" id="dist10km">Within 10 km <span id="mapCount10" style="background:rgba(47,93,80,.12);padding:1px 6px;border-radius:50px;margin-left:3px;font-size:.7rem;">—</span></button>
+          </div>
+          <button id="clearRouteBtn">✕ Clear Route</button>
+        </div>
+
+        <!-- Map canvas (or placeholder) -->
+        <div id="ngoMapContainer">
+          <!-- Google Maps renders here -->
+        </div>
+        <div class="ngo-map-placeholder" id="ngoMapPlaceholder" style="display:none;">
+          <div style="font-size:3rem;opacity:.7;">🗺️</div>
+          <h4>Add Your Google Maps API Key</h4>
+          <p>
+            Open <strong>script.js</strong> and replace <code>YOUR_API_KEY</code> with your
+            actual Google Maps API key to see all food listings plotted on a live map with
+            custom markers, info windows, and route directions.
+          </p>
+          <p style="font-size:.75rem;color:#6b8c84;margin-top:.3rem;">
+            Enable: Maps JavaScript API · Directions API · Places API
+          </p>
+        </div>
+
+        <!-- Legend + footer -->
+        <div class="map-footer-bar">
+          <div class="map-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#2f5d50;"></div>
+              <span>🥗 Veg listing</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#b91c1c;"></div>
+              <span>🍗 Non-Veg listing</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#1d4ed8;"></div>
+              <span>📍 Your location</span>
+            </div>
+            <div class="legend-item" style="color:#b91c1c;">
+              🔥 Expiring soon
+            </div>
+          </div>
+          <span style="font-size:.72rem;color:#6b8c84;">Click marker → Accept or Get Directions</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECTION: AVAILABLE FOOD (cards)
+    ══════════════════════════════════════════════ -->
+    <section id="availableFood" class="mb-10 dash-section-anchor">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div class="dash-section-title mb-0">🍽️ Available Food Near You</div>
+        <div class="flex gap-2 flex-wrap">
+          <button class="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all food-filter-btn"
+                  data-type="all"
+                  style="background:var(--green-dark);color:#fff;border-color:var(--green-dark);">All</button>
+          <button class="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all food-filter-btn"
+                  data-type="Veg"
+                  style="color:var(--text-mid);border-color:#d1e3dd;">🟢 Veg</button>
+          <button class="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all food-filter-btn"
+                  data-type="Non-Veg"
+                  style="color:var(--text-mid);border-color:#d1e3dd;">🔴 Non-Veg</button>
+        </div>
+      </div>
+      <div id="availableFoodContainer" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECTION: MY PICKUPS
+    ══════════════════════════════════════════════ -->
+    <section id="myPickups" class="mb-10 dash-section-anchor">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div class="dash-section-title mb-0">📦 My Pickups</div>
+        <div class="tab-bar">
+          <button class="tab-btn tab-active" data-pickup-filter="all">All</button>
+          <button class="tab-btn" data-pickup-filter="accepted">✅ Accepted</button>
+          <button class="tab-btn" data-pickup-filter="in-progress">🚚 In Progress</button>
+          <button class="tab-btn" data-pickup-filter="completed">🏆 Done</button>
+        </div>
+      </div>
+      <div id="myPickupsContainer" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECTION: NOTIFICATIONS
+    ══════════════════════════════════════════════ -->
+    <section id="ngoNotifications" class="mb-10 dash-section-anchor">
+      <div class="dash-section-title">🔔 Notifications</div>
+      <div class="form-card" style="padding:1.2rem;">
+        <div id="ngoNotifContainer"></div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         SECTION: MY IMPACT
+    ══════════════════════════════════════════════ -->
+    <section id="ngoImpact" class="dash-section-anchor">
+      <div class="dash-section-title">🏆 Your Impact</div>
+      <div class="grid md:grid-cols-3 gap-5">
+        <div class="md:col-span-2">
+          <div class="impact-box">
+            <div class="text-sm font-semibold mb-3" style="color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.1em;">Meals Distributed by Hope Foundation</div>
+            <div class="impact-box-num" id="ngoImpactMeals">0</div>
+            <div class="impact-box-label mt-2">meals served to people in need 🌍</div>
+            <div class="grid grid-cols-3 gap-4 mt-8 pt-6" style="border-top:1px solid rgba(255,255,255,.15);">
+              <div><div class="text-xl font-bold text-green-300" id="impactTotalPickups">0</div><div class="text-xs mt-1" style="color:rgba(255,255,255,.55);">Total Pickups</div></div>
+              <div><div class="text-xl font-bold text-blue-300" id="impactDonePickups">0</div><div class="text-xs mt-1" style="color:rgba(255,255,255,.55);">Completed</div></div>
+              <div><div class="text-xl font-bold text-yellow-300" id="impactFamilies">0</div><div class="text-xs mt-1" style="color:rgba(255,255,255,.55);">Families Fed</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-card flex flex-col gap-4">
+          <div class="font-bold text-base" style="color:var(--text-dark);">💡 Map Tips</div>
+          <div class="flex items-start gap-3 text-sm"><span class="text-xl flex-shrink-0">🗺️</span><div><div class="font-semibold text-gray-700">Use the Food Map</div><div style="color:var(--text-light);font-size:.8rem;">See all available food plotted as markers near you</div></div></div>
+          <div class="flex items-start gap-3 text-sm"><span class="text-xl flex-shrink-0">📏</span><div><div class="font-semibold text-gray-700">Filter by distance</div><div style="color:var(--text-light);font-size:.8rem;">Switch between All / 5km / 10km filters on the map</div></div></div>
+          <div class="flex items-start gap-3 text-sm"><span class="text-xl flex-shrink-0">🚗</span><div><div class="font-semibold text-gray-700">Get Directions</div><div style="color:var(--text-light);font-size:.8rem;">Click a marker → tap Directions to see the route</div></div></div>
+          <div class="flex items-start gap-3 text-sm"><span class="text-xl flex-shrink-0">🔥</span><div><div class="font-semibold text-gray-700">Expiring Soon</div><div style="color:var(--text-light);font-size:.8rem;">Red badge in info window = pick up within 24 hours</div></div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     GOOGLE MAPS API — loaded after script.js
+     callback=initNGOMap defined in script.js
+════════════════════════════════════════════════ -->
+<script src="script.js"></script>
+<script>
+
+/* ── Sidebar nav (desktop + mobile) ──────────────── */
+(function initSidebarNav(){
+  const allItems = document.querySelectorAll('.nav-item[data-section]');
+  function setActive(id){ allItems.forEach(item=>item.classList.toggle('active',item.dataset.section===id)); }
+  function scrollToSection(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+  allItems.forEach(item=>{
+    item.addEventListener('click',function(e){
+      e.preventDefault();
+      setActive(this.dataset.section);
+      scrollToSection(this.dataset.section);
+      closeMobileDrawer();
+    });
+  });
+  const sections=['nearby-map','availableFood','myPickups','ngoNotifications','ngoImpact'];
+  const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)setActive(e.target.id);});},{rootMargin:'-30% 0px -60% 0px',threshold:0});
+  sections.forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+})();
+
+/* ── Mobile drawer ─────────────────────────────── */
+function openMobileDrawer(){document.getElementById('mobDrawer').classList.add('open');document.getElementById('mobOverlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeMobileDrawer(){document.getElementById('mobDrawer').classList.remove('open');document.getElementById('mobOverlay').classList.remove('open');document.body.style.overflow='';}
+document.getElementById('mobMenuBtn').addEventListener('click',openMobileDrawer);
+document.getElementById('mobDrawerClose').addEventListener('click',closeMobileDrawer);
+document.getElementById('mobOverlay').addEventListener('click',closeMobileDrawer);
+
+/* ── Distance filter buttons ───────────────────── */
+(function initDistFilter(){
+  document.querySelectorAll('.dist-btn').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.dist-btn').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      const filter=this.dataset.dist;
+      if(window._ngoMapState && window._ngoMapState.map){
+        renderNearbyFoodMarkers(filter);
+      }
+    });
+  });
+  // Clear route
+  document.getElementById('clearRouteBtn').addEventListener('click',function(){
+    const S=window._ngoMapState;
+    if(S && S.directionsRenderer){ S.directionsRenderer.setDirections({routes:[]}); }
+    this.style.display='none';
+    showToast('Route cleared','success');
+  });
+})();
+
+/* ── Food type filter (cards) ──────────────────── */
+(function initFoodTypeFilter(){
+  const btns=document.querySelectorAll('.food-filter-btn');
+  btns.forEach(btn=>{
+    btn.addEventListener('click',function(){
+      btns.forEach(b=>{ b.style.background=''; b.style.color='var(--text-mid)'; b.style.borderColor='#d1e3dd'; });
+      this.style.background='var(--green-dark)';
+      this.style.color='#fff';
+      this.style.borderColor='var(--green-dark)';
+      renderAvailableFoodFiltered(this.dataset.type);
+    });
+  });
+})();
+
+function renderAvailableFoodFiltered(type){
+  const container=document.getElementById('availableFoodContainer');
+  if(!container) return;
+  const listings=getListings().filter(l=>l.status==='pending');
+  const filtered=type==='all'?listings:listings.filter(l=>l.foodType===type);
+  const distances=['1.2 km','2.4 km','3.1 km','0.8 km','4.5 km'];
+  if(filtered.length===0){
+    container.innerHTML=`<div class="empty-state md:col-span-2"><div class="empty-icon">🍽️</div><p>No ${type!=='all'?type:''} food available right now.</p></div>`;
+    return;
+  }
+  container.innerHTML=filtered.map((l,i)=>`
+    <div class="card food-card" data-id="${l.id}">
+      <div class="card-header-row">
+        <div><h3 class="card-title">${l.foodName}</h3><p class="card-subtitle">${l.restaurant}</p></div>
+        <div class="card-badges">
+          <span class="badge-type-${l.foodType==='Veg'?'veg':'nonveg'}">${l.foodType==='Veg'?'🟢 Veg':'🔴 Non-Veg'}</span>
+          ${isExpiringSoon(l.expiry)?'<span class="badge-expiring">🔥 Expiring Soon</span>':''}
+        </div>
+      </div>
+      <div class="card-meta">
+        <span>📦 ${l.quantity}</span>
+        <span>📍 ${l.location}</span>
+        <span>📏 ${distances[i%distances.length]} away</span>
+        <span>📅 Expires: ${l.expiry}</span>
+        <span>📞 ${l.contact}</span>
+        ${l.latitude?`<span style="color:var(--green-dark);font-weight:600;cursor:pointer;" onclick="flyToListing(${l.latitude},${l.longitude})">🗺️ View on Map</span>`:''}
+      </div>
+      <div class="card-footer-row">
+        <span class="meals-count">🥗 ~${l.mealsEstimate} meals</span>
+        <button class="btn-accept" onclick="acceptFood('${l.id}')">🤝 Accept Pickup</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ── Fly to listing on NGO map ─────────────────── */
+function flyToListing(lat, lng){
+  const S=window._ngoMapState;
+  if(!S||!S.map) return;
+  S.map.setCenter({lat,lng});
+  S.map.setZoom(15);
+  document.getElementById('nearby-map').scrollIntoView({behavior:'smooth'});
+}
+
+/* ── Pickup filter tabs ─────────────────────────── */
+(function initPickupTabs(){
+  const btns=document.querySelectorAll('.tab-btn[data-pickup-filter]');
+  btns.forEach(btn=>{
+    btn.addEventListener('click',function(){
+      btns.forEach(b=>b.classList.remove('tab-active'));
+      this.classList.add('tab-active');
+      renderPickupsFiltered(this.dataset.pickupFilter);
+    });
+  });
+})();
+
+function renderPickupsFiltered(status){
+  const container=document.getElementById('myPickupsContainer');
+  if(!container) return;
+  const all=getListings().filter(l=>l.acceptedBy==='Hope Foundation NGO');
+  const filtered=status==='all'?all:all.filter(l=>l.status===status);
+  if(filtered.length===0){
+    container.innerHTML=`<div class="empty-state md:col-span-2"><div class="empty-icon">📦</div><p>No pickups${status!=='all'?' with "'+status+'" status':''} yet.</p></div>`;
+    return;
+  }
+  container.innerHTML=filtered.map(l=>`
+    <div class="card pickup-card">
+      <div class="card-header-row">
+        <div><h3 class="card-title">${l.foodName}</h3><p class="card-subtitle">${l.restaurant}</p></div>
+        ${statusBadge(l.status)}
+      </div>
+      <div class="card-meta">
+        <span>📦 ${l.quantity}</span>
+        <span>📍 ${l.location}</span>
+        <span>📞 ${l.contact}</span>
+        <span>📅 Expires: ${l.expiry}</span>
+        ${l.latitude?`<span style="color:var(--green-dark);font-weight:600;cursor:pointer;" onclick="flyToListing(${l.latitude},${l.longitude})">🗺️ Map</span>`:''}
+      </div>
+      <div class="card-footer-row">
+        <span class="meals-count">🥗 ~${l.mealsEstimate} meals</span>
+        ${l.status==='accepted'   ?`<button class="btn-progress" onclick="markInProgress('${l.id}')">🚚 In Progress</button>`:''}
+        ${l.status==='in-progress'?`<button class="btn-complete" onclick="markCompleted('${l.id}')">✅ Complete</button>`:''}
+        ${l.status==='completed'  ?`<span class="text-xs font-semibold" style="color:#059669;">✅ Successfully distributed</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+/* ── Override render functions for this page ──── */
+function renderAvailableFood(){ renderAvailableFoodFiltered('all'); }
+function renderMyPickups(){ renderPickupsFiltered('all'); }
+
+/* ── NGO stats (extended) ──────────────────────── */
+function renderNGOStats(){
+  const listings   =getListings();
+  const myPickups  =listings.filter(l=>l.acceptedBy==='Hope Foundation NGO');
+  const completed  =myPickups.filter(l=>l.status==='completed');
+  const inProgress =myPickups.filter(l=>l.status==='in-progress');
+  const totalMeals =completed.reduce((s,l)=>s+(l.mealsEstimate||0),0);
+  const available  =listings.filter(l=>l.status==='pending').length;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  ['ngoStatMeals','ngoStatMeals2','ngoImpactMeals'].forEach(id=>set(id,totalMeals));
+  ['ngoStatPickups','ngoStatPickups2','impactTotalPickups'].forEach(id=>set(id,myPickups.length));
+  ['ngoStatAvailable','ngoStatAvailable2'].forEach(id=>set(id,available));
+  set('ngoStatInProgress',inProgress.length);
+  set('impactDonePickups',completed.length);
+  set('impactFamilies',Math.round(totalMeals/4));
+}
+
+/* ── Check API key + inject Maps script ─────────── */
+(function checkApiKey(){
+  if(typeof GOOGLE_MAPS_API_KEY!=='undefined' && GOOGLE_MAPS_API_KEY!=='YOUR_API_KEY'){
+    const script=document.createElement('script');
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initNGOMap`;
+    script.async=true;
+    script.defer=true;
+    document.head.appendChild(script);
+  } else {
+    document.getElementById('ngoMapContainer').style.display='none';
+    document.getElementById('ngoMapPlaceholder').style.display='flex';
+    document.getElementById('mapMarkerCount').textContent='⚠️ API key required';
+    // Update header badge
+    const badge=document.querySelector('.ngo-map-header span:last-child');
+    if(badge){badge.textContent='⚠️ Key Required';badge.style.background='rgba(252,165,30,.15)';badge.style.color='#fbbf24';badge.style.borderColor='rgba(252,165,30,.35)';}
+  }
+})();
+
+/* ── Init on DOM ready ─────────────────────────── */
+document.addEventListener('DOMContentLoaded',function(){
+  renderAvailableFood();
+  renderMyPickups();
+  renderNGONotifications();
+  renderNGOStats();
+});
+</script>
+</body>
+</html>
