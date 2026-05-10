@@ -2,6 +2,9 @@
 
 Nutri-Flow is a modern nutrition and healthy lifestyle web application designed to help users explore healthy food choices, track nutrition-related information, and maintain a balanced lifestyle through a clean and user-friendly interface.
 
+## 🌐 Live Demo
+
+🔗 https://nutriflow1.netlify.app/
 ---
 
 # 🚀 Features
