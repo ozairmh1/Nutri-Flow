@@ -110,8 +110,3 @@ If you'd like to improve this project:
 
 ---
 
-# ⭐ Support
-
-If you like this project, consider giving it a ⭐ on GitHub.
-
-It helps support and motivates further development.
